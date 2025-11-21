@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow Scheduler - UPenn TissueLab</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation Header -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-microscope"></i>
+                <span>Workflow Scheduler</span>
+            </div>
+            <div class="nav-user">
+                <input type="text" id="userIdInput" placeholder="Enter User ID" value="user-001">
+                <button id="setUserBtn" class="btn-primary">
+                    <i class="fas fa-user-check"></i> Set User
+                </button>
+                <span id="currentUserDisplay" class="user-badge"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- System Status Bar -->
+    <div class="status-bar">
+        <div class="status-container">
+            <div class="status-item">
+                <i class="fas fa-server"></i>
+                <div class="status-info">
+                    <span class="status-label">Active Workers</span>
+                    <span class="status-value" id="activeWorkers">-</span>
+                </div>
+            </div>
+            <div class="status-item">
+                <i class="fas fa-users"></i>
+                <div class="status-info">
+                    <span class="status-label">Active Users</span>
+                    <span class="status-value" id="activeUsers">-</span>
+                </div>
+            </div>
+            <div class="status-item">
+                <i class="fas fa-clock"></i>
+                <div class="status-info">
+                    <span class="status-label">Queued Users</span>
+                    <span class="status-value" id="queuedUsers">-</span>
+                </div>
+            </div>
+            <div class="status-item">
+                <i class="fas fa-circle" id="connectionStatus"></i>
+                <div class="status-info">
+                    <span class="status-label">Connection</span>
+                    <span class="status-value" id="connectionText">Connecting...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-link active" data-tab="dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-link" data-tab="workflows">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>Workflows</span>
+                </a>
+                <a href="#" class="nav-link" data-tab="jobs">
+                    <i class="fas fa-tasks"></i>
+                    <span>Jobs</span>
+                </a>
+                <a href="#" class="nav-link" data-tab="create">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Create New</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Content Area -->
+        <main class="content">
+            <!-- Dashboard Tab -->
+            <section id="dashboard" class="tab-panel active">
+                <div class="panel-header">
+                    <h1><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
+                    <button class="btn-refresh" onclick="refreshAll()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+
+                <div class="dashboard-grid">
+                    <!-- Recent Workflows -->
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-project-diagram"></i> Recent Workflows</h3>
+                            <a href="#" class="link-view-all" data-tab="workflows">View All →</a>
+                        </div>
+                        <div id="dashboardWorkflows" class="workflow-list-compact"></div>
+                    </div>
+
+                    <!-- Active Jobs -->
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-running"></i> Running Jobs</h3>
+                            <a href="#" class="link-view-all" data-tab="jobs">View All →</a>
+                        </div>
+                        <div id="dashboardJobs" class="job-list-compact"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Workflows Tab -->
+            <section id="workflows" class="tab-panel">
+                <div class="panel-header">
+                    <h1><i class="fas fa-project-diagram"></i> My Workflows</h1>
+                    <button class="btn-refresh" onclick="loadWorkflows()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+                <div id="workflowsList" class="workflows-grid"></div>
+            </section>
+
+            <!-- Jobs Tab -->
+            <section id="jobs" class="tab-panel">
+                <div class="panel-header">
+                    <h1><i class="fas fa-tasks"></i> All Jobs</h1>
+                    <div class="panel-actions">
+                        <select id="jobStatusFilter" class="filter-select">
+                            <option value="">All Status</option>
+                            <option value="PENDING">Pending</option>
+                            <option value="RUNNING">Running</option>
+                            <option value="SUCCEEDED">Succeeded</option>
+                            <option value="FAILED">Failed</option>
+                        </select>
+                        <button class="btn-refresh" onclick="loadAllJobs()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div id="allJobsList" class="jobs-grid"></div>
+            </section>
+
+            <!-- Create New Tab -->
+            <section id="create" class="tab-panel">
+                <div class="panel-header">
+                    <h1><i class="fas fa-plus-circle"></i> Create New Workflow</h1>
+                </div>
+
+                <div class="create-container">
+                    <!-- File Upload Section -->
+                    <div class="form-section" style="margin-bottom: 2rem;">
+                        <h2><i class="fas fa-cloud-upload-alt"></i> Upload WSI Images</h2>
+                        <div class="upload-area" id="uploadArea">
+                            <input type="file" id="fileInput" accept=".svs,.tif,.tiff,.ndpi,.vms,.vmu,.scn,.mrxs,.bif" multiple style="display: none;">
+                            <div class="upload-placeholder" onclick="document.getElementById('fileInput').click()">
+                                <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                                <p><strong>Click to upload</strong> or drag and drop</p>
+                                <p style="font-size: 0.875rem; color: var(--gray-500);">SVS, TIF, TIFF, NDPI and other WSI formats</p>
+                            </div>
+                        </div>
+                        <div id="uploadedFiles" class="uploaded-files"></div>
+                    </div>
+
+                    <!-- Quick Start Templates -->
+                    <div class="templates-section">
+                        <h2><i class="fas fa-layer-group"></i> Quick Start Templates</h2>
+                        <div class="templates-grid">
+                            <div class="template-card" onclick="loadTemplate('single-segmentation')">
+                                <i class="fas fa-file-image"></i>
+                                <h3>Single Image Segmentation</h3>
+                                <p>Segment cells in a single WSI image</p>
+                            </div>
+                            <div class="template-card" onclick="loadTemplate('tissue-then-segment')">
+                                <i class="fas fa-layer-group"></i>
+                                <h3>Tissue Mask → Segmentation</h3>
+                                <p>Generate tissue mask first, then segment</p>
+                            </div>
+                            <div class="template-card" onclick="loadTemplate('parallel-branches')">
+                                <i class="fas fa-code-branch"></i>
+                                <h3>Parallel Multi-Branch</h3>
+                                <p>Process multiple images in parallel</p>
+                            </div>
+                            <div class="template-card" onclick="loadTemplate('custom')">
+                                <i class="fas fa-edit"></i>
+                                <h3>Custom Workflow</h3>
+                                <p>Build your own DAG from scratch</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Workflow Form -->
+                    <div class="form-section">
+                        <h2><i class="fas fa-cogs"></i> Workflow Configuration</h2>
+                        <form id="workflowForm" class="workflow-form">
+                            <div class="form-group">
+                                <label for="workflowName">
+                                    <i class="fas fa-heading"></i> Workflow Name *
+                                </label>
+                                <input type="text" id="workflowName" required 
+                                       placeholder="e.g., Cell Analysis Pipeline">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="dagJson">
+                                    <i class="fas fa-code"></i> DAG Configuration (JSON) *
+                                </label>
+                                <textarea id="dagJson" rows="15" required 
+                                          placeholder="Paste your DAG JSON here..."></textarea>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="button" class="btn-secondary" onclick="validateDAG()">
+                                    <i class="fas fa-check-circle"></i> Validate DAG
+                                </button>
+                                <button type="submit" class="btn-primary">
+                                    <i class="fas fa-paper-plane"></i> Submit Workflow
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- DAG Examples -->
+                        <details class="dag-examples">
+                            <summary><i class="fas fa-book"></i> View DAG Structure Examples</summary>
+                            <div class="example-tabs">
+                                <button class="example-tab active" data-example="simple">Simple</button>
+                                <button class="example-tab" data-example="sequential">Sequential</button>
+                                <button class="example-tab" data-example="parallel">Parallel</button>
+                            </div>
+                            <pre id="exampleCode" class="code-block"></pre>
+                        </details>
+                    </div>
+
+                    <!-- Visual DAG Preview -->
+                    <div class="dag-preview-section">
+                        <h2><i class="fas fa-eye"></i> DAG Preview</h2>
+                        <div id="dagPreview" class="dag-preview">
+                            <p class="preview-placeholder">Enter DAG JSON to see visualization</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal for Job Details -->
+    <div id="jobModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-info-circle"></i> Job Details</h2>
+                <button class="modal-close" onclick="closeJobModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="jobModalBody" class="modal-body">
+                <!-- Dynamic content -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="/js/app.js"></script>
+    <script src="/js/websocket.js"></script>
+    <script src="/js/templates.js"></script>
+</body>
+</html>
+

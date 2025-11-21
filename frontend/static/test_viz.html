@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Visualization Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        img { max-width: 100%; border: 2px solid #ddd; border-radius: 4px; }
+        .info { background: #e3f2fd; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { color: green; }
+        .error { color: red; }
+        button { padding: 10px 20px; margin: 5px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #1976D2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Visualization Test Page</h1>
+        
+        <div class="info">
+            <strong>Testing Job ID:</strong> 4571bba8-ed08-40c8-97a7-fb0f225e33c9
+        </div>
+        
+        <h2>Direct Image Load Test</h2>
+        <div id="status">Loading...</div>
+        
+        <h3>Thumbnail:</h3>
+        <img id="thumbImg" src="/api/v1/jobs/4571bba8-ed08-40c8-97a7-fb0f225e33c9/visualization?thumbnail=true" 
+             alt="Thumbnail"
+             onload="document.getElementById('thumbStatus').innerHTML='<span class=success>✅ Thumbnail loaded successfully!</span>'"
+             onerror="document.getElementById('thumbStatus').innerHTML='<span class=error>❌ Thumbnail failed to load</span>'">
+        <div id="thumbStatus"></div>
+        
+        <h3>Full Size:</h3>
+        <img id="fullImg" src="/api/v1/jobs/4571bba8-ed08-40c8-97a7-fb0f225e33c9/visualization" 
+             alt="Full Size"
+             onload="document.getElementById('fullStatus').innerHTML='<span class=success>✅ Full image loaded successfully!</span>'"
+             onerror="document.getElementById('fullStatus').innerHTML='<span class=error>❌ Full image failed to load</span>'">
+        <div id="fullStatus"></div>
+        
+        <h3>Actions:</h3>
+        <button onclick="location.reload()">🔄 Reload Page</button>
+        <button onclick="testApi()">🧪 Test API Directly</button>
+        <button onclick="window.location='/'">← Back to Main App</button>
+        
+        <div id="apiTest" style="margin-top: 20px;"></div>
+    </div>
+    
+    <script>
+        async function testApi() {
+            const div = document.getElementById('apiTest');
+            div.innerHTML = '<p>Testing API...</p>';
+            
+            try {
+                const response = await fetch('/api/v1/jobs/4571bba8-ed08-40c8-97a7-fb0f225e33c9/visualization?thumbnail=true', {
+                    headers: {
+                        'X-User-ID': 'user-001'
+                    }
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    div.innerHTML = `
+                        <div class="success">
+                            <h4>✅ API Response Success!</h4>
+                            <p>Status: ${response.status}</p>
+                            <p>Content-Type: ${response.headers.get('content-type')}</p>
+                            <p>Size: ${blob.size} bytes</p>
+                            <img src="${url}" style="max-width: 400px; margin-top: 10px;">
+                        </div>
+                    `;
+                } else {
+                    div.innerHTML = `
+                        <div class="error">
+                            <h4>❌ API Error</h4>
+                            <p>Status: ${response.status}</p>
+                            <p>Response: ${await response.text()}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                div.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Network Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Auto test on load
+        setTimeout(testApi, 1000);
+    </script>
+</body>
+</html>
+
