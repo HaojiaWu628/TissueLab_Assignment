@@ -385,6 +385,13 @@ async function viewWorkflowDetails(workflowId) {
         // Auto-refresh every 2 seconds if workflow is still running
         if (workflow.status === 'RUNNING' || workflow.status === 'PENDING') {
             window.workflowDetailRefreshInterval = setInterval(async () => {
+                // Stop refreshing if modal is closed
+                const modal = document.getElementById('jobModal');
+                if (!modal || !modal.classList.contains('active')) {
+                    clearInterval(window.workflowDetailRefreshInterval);
+                    return;
+                }
+                
                 try {
                     const updatedWorkflow = await apiCall(`/workflows/${workflowId}`);
                     const updatedJobs = await apiCall(`/workflows/${workflowId}/jobs`);
@@ -459,8 +466,11 @@ async function viewWorkflowDetails(workflowId) {
                     // Stop refreshing if workflow is complete
                     if (updatedWorkflow.status === 'SUCCEEDED' || updatedWorkflow.status === 'FAILED') {
                         clearInterval(window.workflowDetailRefreshInterval);
-                        // Reload the modal to show download buttons
-                        setTimeout(() => viewWorkflowDetails(workflowId), 500);
+                        // Only reload the modal if it's still open
+                        const modal = document.getElementById('jobModal');
+                        if (modal && modal.classList.contains('active')) {
+                            setTimeout(() => viewWorkflowDetails(workflowId), 500);
+                        }
                     }
                 } catch (error) {
                     console.error('Failed to refresh workflow details:', error);
@@ -1670,6 +1680,12 @@ function loadExampleCode(type) {
 // ============================================
 
 function closeJobModal() {
+    // Clear the refresh interval if it exists
+    if (window.workflowDetailRefreshInterval) {
+        clearInterval(window.workflowDetailRefreshInterval);
+        window.workflowDetailRefreshInterval = null;
+    }
+    
     document.getElementById('jobModal').classList.remove('active');
 }
 

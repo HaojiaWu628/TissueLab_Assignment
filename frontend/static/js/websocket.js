@@ -72,11 +72,12 @@ class WebSocketManager {
         console.log('All WebSocket connections closed');
     }
     
-    attemptReconnect(workflowId) {
+    async attemptReconnect(workflowId) {
         const attempts = this.reconnectAttempts.get(workflowId) || 0;
         
         if (attempts >= this.maxReconnectAttempts) {
             console.log(`Max reconnect attempts reached for workflow: ${workflowId}`);
+            this.reconnectAttempts.delete(workflowId);
             return;
         }
         
@@ -85,8 +86,21 @@ class WebSocketManager {
         
         this.reconnectAttempts.set(workflowId, attempts + 1);
         
-        setTimeout(() => {
-            this.connectToWorkflow(workflowId);
+        setTimeout(async () => {
+            // Check if workflow still exists before reconnecting
+            try {
+                const response = await fetch(`${API_BASE}/workflows/${workflowId}`);
+                if (response.ok) {
+                    this.connectToWorkflow(workflowId);
+                } else if (response.status === 403 || response.status === 404) {
+                    console.log(`Workflow ${workflowId} no longer exists or accessible, stopping reconnection attempts`);
+                    this.reconnectAttempts.delete(workflowId);
+                }
+            } catch (error) {
+                console.error(`Failed to check workflow ${workflowId} existence:`, error);
+                // Still try to reconnect in case of network error
+                this.connectToWorkflow(workflowId);
+            }
         }, delay);
     }
     
@@ -257,6 +271,19 @@ async function connectToActiveWorkflows() {
             wf.status === 'RUNNING' || wf.status === 'PENDING'
         );
         
+        // Get list of currently active workflow IDs
+        const activeWorkflowIds = new Set(activeWorkflows.map(wf => wf.id));
+        
+        // Disconnect from workflows that are no longer active
+        wsManager.connections.forEach((ws, workflowId) => {
+            if (!activeWorkflowIds.has(workflowId)) {
+                console.log(`Workflow ${workflowId} no longer active, disconnecting WebSocket`);
+                wsManager.disconnectWorkflow(workflowId);
+                wsManager.reconnectAttempts.delete(workflowId);
+            }
+        });
+        
+        // Connect to active workflows
         activeWorkflows.forEach(wf => {
             wsManager.connectToWorkflow(wf.id);
         });
